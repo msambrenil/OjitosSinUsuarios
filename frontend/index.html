@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Showroom Natura OjitOs</title>
+
+    <!-- Material Design 3 Web Components - Módulos (usar los que se necesiten) -->
+    <!-- Ver: https://github.com/material-components/material-web/blob/main/docs/getting-started.md -->
+    <script type="module" src="https://esm.run/@material/web/all.js"></script>
+    <!--
+        Nota: Cargar `all.js` es para desarrollo fácil. En producción, es mejor importar solo los componentes necesarios.
+        Ejemplo para un botón:
+        import '@material/web/button/filled-button.js';
+        import '@material/web/button/outlined-button.js';
+    -->
+
+    <!-- Tipografía Comfortaa (se configurará en style.css) -->
+
+    <!-- Estilos locales -->
+    <link rel="stylesheet" href="styles/style.css">
+</head>
+<body>
+    <header style="position: relative;">
+        <h1>Showroom Natura OjitOs</h1>
+        <div style="position: absolute; top: 20px; right: 20px; display:flex; align-items:center;">
+            <label for="darkModeToggle" style="margin-right: 8px; color: var(--md-sys-color-on-primary-container);">Oscuro</label>
+            <md-switch id="darkModeToggle"></md-switch>
+        </div>
+        <nav>
+            <!-- La navegación se podría generar dinámicamente con JS -->
+            <md-filled-button data-view="dashboard">Dashboard</md-filled-button>
+            <md-filled-button data-view="catalog">Catálogo</md-filled-button>
+            <md-filled-button data-view="sales">Ventas (Admin)</md-filled-button>
+            <md-filled-button data-view="products">Productos (Admin)</md-filled-button>
+            <md-filled-button data-view="clients">Clientes (Admin)</md-filled-button>
+            <md-filled-button data-view="categories">Categorías (Admin)</md-filled-button>
+            <md-filled-button data-view="tags">Tags (Admin)</md-filled-button>
+            <md-filled-button data-view="stats">Estadísticas (Admin)</md-filled-button>
+            <md-filled-button data-view="settings">Configuración (Admin)</md-filled-button>
+            <!-- Más botones de navegación aquí -->
+        </nav>
+    </header>
+
+    <main id="app-root">
+        <!-- El contenido de las vistas/páginas se cargará aquí -->
+        <p>Cargando...</p>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Showroom Natura OjitOs</p>
+    </footer>
+
+    <!-- Script principal de la aplicación -->
+    <script type="module" src="src/app.js"></script>
+</body>
+</html>
