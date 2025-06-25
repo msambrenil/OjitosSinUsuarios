@@ -687,7 +687,7 @@ def update_sale_status(sale_id): # Por ahora solo actualiza el estado
     if new_status == "Cancelado" and sale.status != "Cancelado": # Si se está cancelando y no estaba ya cancelada
         for item in sale.items:
             product = Product.query.get(item.product_id)
-            if product:
+            if product: # Verificar que el producto exista antes de intentar acceder a sus atributos
                 product.stockActual += item.quantity
         sale.status = new_status # Actualizar estado después de restaurar stock
         db.session.commit()
@@ -723,7 +723,7 @@ def delete_sale(sale_id):
     if sale.status != "Cancelado":
         for item in sale.items:
             product = Product.query.get(item.product_id)
-            if product:
+            if product: # Verificar que el producto exista
                 product.stockActual += item.quantity
 
     # Los SaleItems se eliminan en cascada debido a la configuración del modelo Sale.
