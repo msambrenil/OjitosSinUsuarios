@@ -151,9 +151,14 @@ def get_config():
 @app.route('/api/config', methods=['PUT'])
 def update_config():
     data = request.json
+    if not data:
+        return jsonify({'error': 'Cuerpo de la petición vacío o no es JSON.'}), 400
+
     config = Config.query.first()
     if not config:
-        # Esto no debería pasar si GET se llama primero, pero como salvaguarda
+        # Si no hay configuración, es probable que queramos crearla aquí también o error
+        # Por ahora, asumimos que get_config() se llamó o que la DB no está vacía.
+        # Para mayor robustez, se podría crear una config por defecto si no existe.
         config = Config()
         db.session.add(config)
 
@@ -199,21 +204,25 @@ def product_to_json(product):
 @app.route('/api/products', methods=['POST'])
 def create_product():
     data = request.json
-    # Validación básica (se puede expandir)
-    if not data or not 'name' in data or not 'priceShowroom' in data:
+    if not data:
+        return jsonify({'error': 'Cuerpo de la petición vacío o no es JSON.'}), 400
+
+    name_data = data.get('name')
+    price_showroom_data = data.get('priceShowroom')
+
+    if not name_data or not name_data.strip() or price_showroom_data is None: # priceShowroom puede ser 0, así que None es mejor check
         return jsonify({'error': 'Datos incompletos. Nombre y Precio Showroom son requeridos.'}), 400
 
-    new_product = Product(
-        name=data['name'],
-        priceRevista=data.get('priceRevista'),
-        priceShowroom=data['priceShowroom'],
-        priceFeria=data.get('priceFeria'),
-        stockActual=data.get('stockActual', 0),
-        stockCritico=data.get('stockCritico', 1),
-        imageUrl=data.get('imageUrl'),
-        catalogImageUrl=data.get('catalogImageUrl'),
-        catalogPrice=data.get('catalogPrice')
-    )
+    new_product = Product()
+    new_product.name = name_data.strip()
+    new_product.priceRevista = data.get('priceRevista')
+    new_product.priceShowroom = price_showroom_data
+    new_product.priceFeria = data.get('priceFeria')
+    new_product.stockActual = data.get('stockActual', 0)
+    new_product.stockCritico = data.get('stockCritico', 1)
+    new_product.imageUrl = data.get('imageUrl')
+    new_product.catalogImageUrl = data.get('catalogImageUrl')
+    new_product.catalogPrice = data.get('catalogPrice')
 
     tag_ids = data.get('tag_ids', [])
     if tag_ids:
@@ -247,10 +256,12 @@ def get_product(product_id):
 def update_product(product_id):
     product = Product.query.get_or_404(product_id)
     data = request.json
+    if not data:
+        return jsonify({'error': 'Cuerpo de la petición vacío o no es JSON.'}), 400
 
-    product.name = data.get('name', product.name)
-    product.priceRevista = data.get('priceRevista', product.priceRevista)
-    product.priceShowroom = data.get('priceShowroom', product.priceShowroom)
+    product.name = data.get('name', product.name) if data.get('name') is not None else product.name # Asegurar que no se borre si no viene
+    product.priceRevista = data.get('priceRevista', product.priceRevista) if data.get('priceRevista') is not None else product.priceRevista
+    product.priceShowroom = data.get('priceShowroom', product.priceShowroom) if data.get('priceShowroom') is not None else product.priceShowroom
     product.priceFeria = data.get('priceFeria', product.priceFeria)
     product.stockActual = data.get('stockActual', product.stockActual)
     product.stockCritico = data.get('stockCritico', product.stockCritico)
@@ -364,14 +375,16 @@ def tag_to_json(tag):
 @app.route('/api/tags', methods=['POST'])
 def create_tag():
     data = request.json
-    if not data or not 'name' in data or not data['name'].strip():
+    if not data or not data.get('name') or not data.get('name').strip():
         return jsonify({'error': 'El nombre del tag es requerido.'}), 400
 
-    existing_tag = Tag.query.filter_by(name=data['name'].strip()).first()
+    name_stripped = data['name'].strip()
+    existing_tag = Tag.query.filter_by(name=name_stripped).first()
     if existing_tag:
         return jsonify({'error': 'Este tag ya existe.'}), 409 # Conflict
 
-    new_tag = Tag(name=data['name'].strip())
+    new_tag = Tag()
+    new_tag.name = name_stripped
     db.session.add(new_tag)
     db.session.commit()
     return jsonify(tag_to_json(new_tag)), 201
@@ -385,11 +398,14 @@ def get_tags():
 def update_tag(tag_id):
     tag = Tag.query.get_or_404(tag_id)
     data = request.json
-    if not data or not 'name' in data or not data['name'].strip():
+    if not data:
+        return jsonify({'error': 'Cuerpo de la petición vacío o no es JSON.'}), 400
+
+    new_name_data = data.get('name')
+    if not new_name_data or not new_name_data.strip():
         return jsonify({'error': 'El nombre del tag es requerido.'}), 400
 
-    # Verificar si el nuevo nombre ya existe en otro tag
-    new_name = data['name'].strip()
+    new_name = new_name_data.strip()
     existing_tag_with_new_name = Tag.query.filter(Tag.id != tag_id, Tag.name == new_name).first()
     if existing_tag_with_new_name:
         return jsonify({'error': 'Ya existe otro tag con este nombre.'}), 409
@@ -420,17 +436,17 @@ def category_to_json(category):
 @app.route('/api/categories', methods=['POST'])
 def create_category():
     data = request.json
-    if not data or not 'name' in data or not data['name'].strip():
+    if not data or not data.get('name') or not data.get('name').strip():
         return jsonify({'error': 'El nombre de la categoría es requerido.'}), 400
 
     existing_category = Category.query.filter_by(name=data['name'].strip()).first()
     if existing_category:
         return jsonify({'error': 'Esta categoría ya existe.'}), 409
 
-    new_category = Category(
-        name=data['name'].strip(),
-        imageUrl=data.get('imageUrl')
-    )
+    new_category = Category()
+    new_category.name = data['name'].strip()
+    new_category.imageUrl = data.get('imageUrl')
+
     db.session.add(new_category)
     db.session.commit()
     return jsonify(category_to_json(new_category)), 201
@@ -444,10 +460,14 @@ def get_categories():
 def update_category(category_id):
     category = Category.query.get_or_404(category_id)
     data = request.json
-    if not data or not 'name' in data or not data['name'].strip():
+    if not data:
+        return jsonify({'error': 'Cuerpo de la petición vacío o no es JSON.'}), 400
+
+    new_name_data = data.get('name')
+    if not new_name_data or not new_name_data.strip():
         return jsonify({'error': 'El nombre de la categoría es requerido.'}), 400
 
-    new_name = data['name'].strip()
+    new_name = new_name_data.strip()
     existing_cat_with_new_name = Category.query.filter(Category.id != category_id, Category.name == new_name).first()
     if existing_cat_with_new_name:
         return jsonify({'error': 'Ya existe otra categoría con este nombre.'}), 409
@@ -485,18 +505,18 @@ def client_to_json(client):
 @app.route('/api/clients', methods=['POST'])
 def create_client():
     data = request.json
-    if not data or not 'name' in data or not data['name'].strip():
+    if not data or not data.get('name') or not data.get('name').strip():
         return jsonify({'error': 'El nombre del cliente es requerido.'}), 400
 
-    new_client = Client(
-        name=data['name'].strip(),
-        nickname=data.get('nickname', '').strip(),
-        whatsapp=data.get('whatsapp', '').strip(),
-        email=data.get('email', '').strip(),
-        gender=data.get('gender'),
-        clientLevel=data.get('clientLevel', 'Nuevo'),
-        profileImageUrl=data.get('profileImageUrl')
-    )
+    new_client = Client()
+    new_client.name = data['name'].strip()
+    new_client.nickname = data.get('nickname', '').strip()
+    new_client.whatsapp = data.get('whatsapp', '').strip()
+    new_client.email = data.get('email', '').strip()
+    new_client.gender = data.get('gender')
+    new_client.clientLevel = data.get('clientLevel', 'Nuevo')
+    new_client.profileImageUrl = data.get('profileImageUrl')
+
     db.session.add(new_client)
     db.session.commit()
     return jsonify(client_to_json(new_client)), 201
@@ -516,13 +536,17 @@ def get_client(client_id):
 def update_client(client_id):
     client = Client.query.get_or_404(client_id)
     data = request.json
-    if not data or not 'name' in data or not data['name'].strip(): # Nombre sigue siendo requerido
+    if not data:
+        return jsonify({'error': 'Cuerpo de la petición vacío o no es JSON.'}), 400
+
+    name_data = data.get('name')
+    if not name_data or not name_data.strip(): # Nombre sigue siendo requerido
         return jsonify({'error': 'El nombre del cliente es requerido.'}), 400
 
-    client.name = data['name'].strip()
-    client.nickname = data.get('nickname', client.nickname).strip()
-    client.whatsapp = data.get('whatsapp', client.whatsapp).strip()
-    client.email = data.get('email', client.email).strip()
+    client.name = name_data.strip()
+    client.nickname = data.get('nickname', client.nickname).strip() if data.get('nickname') is not None else client.nickname
+    client.whatsapp = data.get('whatsapp', client.whatsapp).strip() if data.get('whatsapp') is not None else client.whatsapp
+    client.email = data.get('email', client.email).strip() if data.get('email') is not None else client.email
     client.gender = data.get('gender', client.gender)
     client.clientLevel = data.get('clientLevel', client.clientLevel)
     client.profileImageUrl = data.get('profileImageUrl', client.profileImageUrl)
@@ -575,10 +599,9 @@ def create_sale():
     if not client:
         return jsonify({'error': 'Cliente no encontrado.'}), 404
 
-    new_sale = Sale(
-        client_id=data['client_id'],
-        status=data.get('status', 'Contactado') # Estado inicial por defecto
-    )
+    new_sale = Sale()
+    new_sale.client_id = data['client_id']
+    new_sale.status = data.get('status', 'Contactado') # Estado inicial por defecto
 
     calculated_total_amount = 0
     items_to_add = []
@@ -604,20 +627,19 @@ def create_sale():
         # Disminuir stock
         product.stockActual -= quantity
 
-        sale_item = SaleItem(
-            product_id=product.id,
-            quantity=quantity,
-            price_at_sale=price_at_sale,
-            subtotal=subtotal
-        )
+        sale_item = SaleItem()
+        sale_item.product_id = product.id
+        sale_item.quantity = quantity
+        sale_item.price_at_sale = price_at_sale
+        sale_item.subtotal = subtotal
+        # sale_item.sale = new_sale # Asociar con la venta
         items_to_add.append(sale_item)
 
     new_sale.totalAmount = calculated_total_amount
-    new_sale.items = items_to_add # Asocia los items a la venta
+    new_sale.items = items_to_add
 
     try:
         db.session.add(new_sale)
-        # db.session.add_all(items_to_add) # No es necesario si se usa backref y cascade
         db.session.commit()
         return jsonify(sale_to_json(new_sale)), 201
     except Exception as e:
